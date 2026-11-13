@@ -1,0 +1,31 @@
+{
+  "name": "gunman-rush-editor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/editor"
+  ],
+  "scripts": {
+    "dev": "vite --config apps/editor/vite.config.js --host 127.0.0.1",
+    "build": "vite build --config apps/editor/vite.config.js",
+    "test": "node --test tests/*.test.mjs",
+    "check": "npm test && npm run build",
+    "import:game": "node scripts/import-game.mjs",
+    "android": "bash scripts/build-android.sh"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.0.1",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@vitejs/plugin-react": "6.0.2",
+    "typescript": "5.9.3",
+    "vite": "8.0.13"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}
