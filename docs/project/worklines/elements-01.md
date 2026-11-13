@@ -6,4 +6,4 @@
 
 实际验证：npm run check通过28项测试和生产构建；同版309房／409连接／44已编写房导入无问题。scripts/elements-browser-check.mjs在Chromium1440×1000和390×844操作放置、复制、删除、附着和选材，无页面错误或alert。截图在build/elements-editor-{desktop,phone}.png。实际事务生成45实体房间含门／载台／建筑组合、复制、附着刺和材质覆盖，通过主游戏WorldRoomDocument装载器。主游戏另完成44房往返、186项编辑运行时、112项机关、544项地形、工作台隔离与真实PCK验证。
 
-源码经关联PR交付；不合并、不部署、不覆盖在线草稿，不包含游戏素材、用户项目JSON或凭据。原生APK、实体设备性能与商店发行沿原任务另验。后续扩展先在主游戏登记行为与定义，再导入同版目录和运行包；不在编辑器另写一套玩法。
+源码经[PR2](https://github.com/zhipijun1996/gunman-rush-editor/pull/2)交付，与主游戏[PR156](https://github.com/zhipijun1996/gunman-rush/pull/156)配套；不合并、不部署、不覆盖在线草稿，不包含游戏素材、用户项目JSON或凭据。原生APK、实体设备性能与商店发行沿原任务另验。后续扩展先在主游戏登记行为与定义，再导入同版目录和运行包；不在编辑器另写一套玩法。
