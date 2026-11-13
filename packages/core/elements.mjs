@@ -1,5 +1,7 @@
 /** The game catalog owns definitions and port types. These functions only edit data. */
+import {sha256} from '@noble/hashes/sha2.js';
 import {assert,clone,id,entityPosition,entityWithPosition,point,rect,finite} from './model.mjs';
+const nodeName=eid=>'Element_'+Array.from(sha256(new TextEncoder().encode(eid)),b=>b.toString(16).padStart(2,'0')).join('').slice(0,16);
 const esc=s=>s.replaceAll('~','~0').replaceAll('/','~1');
 const path=(room,eid)=>`/rooms/${esc(room)}/entities/${esc(eid)}`;
 
@@ -13,7 +15,7 @@ export function instantiateElement(project,roomId,definitionId,position,instance
   if(['rect','bounds'].includes(field))p[field]=[...at,...p[field].slice(2)];else p[field]=at;
   const e={id:eid,component:d.component,definition_id:member.definition,definition_version:d.version,order:Object.keys(room.entities).length+Object.keys(entities).length,properties:p};
   if(definition.members)e.assembly_id=instanceId;
-  if(!d.component.startsWith('array:')){e.node_name='Element_'+eid.replace(/[^a-zA-Z0-9_]/g,'_');e.parent='';if(catalog.behaviors[d.component]?.state)p.element_id=eid;}
+  if(!d.component.startsWith('array:')){e.node_name=nodeName(eid);e.parent='';if(catalog.behaviors[d.component]?.state)p.element_id=eid;}
   else if(!['array:platforms','array:hook_points','array:climbable_walls','array:hazards'].includes(d.component))p.id=eid;
   assert(!room.entities[eid],'identity','实例ID已存在');entities[eid]=e;
  }
@@ -84,7 +86,7 @@ export function duplicateElements(project,roomId,entityIds,offset=[32,32]) {
  const remap=Object.fromEntries([...selected].map(eid=>[eid,id('element')])),groups={};
  return [...selected].map(eid=>{const old=rows[eid],value=entityWithPosition(old,entityPosition(old).map((v,i)=>v+offset[i]));value.id=remap[eid];
   if(value.properties.element_id)value.properties.element_id=value.id;if(value.properties.id)value.properties.id=value.id;
-  if(value.node_name){value.node_name='Element_'+value.id.replace(/[^a-zA-Z0-9_]/g,'_');delete value.node_path;}
+  if(value.node_name){value.node_name=nodeName(value.id);delete value.node_path;}
   if(value.assembly_id)value.assembly_id=groups[value.assembly_id]||=(id('assembly'));
   value.parent=remap[value.parent]||value.parent;
   for(const link of value.properties.links||[])link.target=remap[link.target]||link.target;
