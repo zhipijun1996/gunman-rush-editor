@@ -4,7 +4,7 @@
 
 ## 基线与写集
 
-按用户指定，以编辑器PR2 `ea64991`、主游戏PR156 `6af8200` 接续。编辑器分支 `feat/phone-editor-workflow`；游戏来源修复分支 `fix/editor-planning-provenance`，配套[PR157](https://github.com/zhipijun1996/gunman-rush/pull/157)。保留schema3目录、业务分类、独立宿主、组合／附着、材质和真实Godot预览。本轮不合并main、不部署旧Site，不提交素材、草稿、构建产物或凭据。
+按用户指定，以编辑器PR2 `ea64991`、主游戏PR156 `6af8200` 接续。编辑器分支 `feat/phone-editor-workflow`，审查[PR3](https://github.com/zhipijun1996/gunman-rush-editor/pull/3)；游戏来源修复分支 `fix/editor-planning-provenance`，配套[PR157](https://github.com/zhipijun1996/gunman-rush/pull/157)。保留schema3目录、业务分类、独立宿主、组合／附着、材质和真实Godot预览。本轮不合并main、不部署旧Site，不提交素材、草稿、构建产物或凭据。
 
 ## 当前交付
 
@@ -22,6 +22,6 @@ AI默认在明确范围内校验后直接更新草稿，必要邻房只联动关
 
 ## 交付与后续
 
-构建与媒体在build/workflow、build/android；发行资产单独放Release，源码不带APK／PCK或媒体。0.2.0为基于上述两条PR的预览版，不表示main已合并。实体Android操作／帧率、ChatGPT真实授权后完成一次真实编辑、在线更新／定稿PR完整往返尚未验证；这几项是下一轮设备验收入口。
+[0.2.0预览版](https://github.com/zhipijun1996/gunman-rush-editor/releases/tag/v0.2.0-preview.1)已发布，APK为172428041字节，SHA256 `cc52fd82cacef2c7e0bf4b7a1f8f087484fab52b22dbec12977bad914b75cfd5`；服务器摘要及无需登录的完整下载一致。两段正常速度操作视频各约25秒、不到0.2MB，标注模拟桥接。构建与媒体在build/workflow、build/android，发行文件只放Release，源码不带APK／PCK或媒体。该发行基于上述两条PR，不表示main已合并。实体Android操作／帧率、ChatGPT真实授权后完成一次真实编辑、在线更新／定稿PR完整往返尚未验证；这几项是下一轮设备验收入口。
 
 签名保存在仓库外私有目录，远端加密备份未完成，必须保留已有密钥。上传使用明确的私有CLI配置，核小附件、服务器摘要及无需登录的完整下载；不得把令牌和密钥写入交接或源码。
