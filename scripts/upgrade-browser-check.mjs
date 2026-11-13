@@ -1,0 +1,14 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {chromium} from '@playwright/test';
+const storageUrl='/@fs'+process.cwd()+'/packages/core/storage.mjs';
+const old=JSON.parse(fs.readFileSync(process.argv[2]||'build/unification/v2-project.json'));
+old.management['P-R03']={scores:{art:{value:8}},note:'保留人工记录'};old.locks=['/rooms/P-R03/name'];
+const workspace={project:old,baseline:structuredClone(old),history:[],redo:[],candidates:[]};
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});const page=await browser.newPage({viewport:{width:390,height:844}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.goto('http://127.0.0.1:5173');await page.getByText('房间目录',{exact:true}).waitFor();
+await page.evaluate(async ([w,url])=>{const {saveLocal}=await import(url);await saveLocal('workspace',w);},[workspace,storageUrl]);
+await page.reload();await page.getByRole('heading',{name:'比较游戏更新'}).waitFor();await page.getByRole('button',{name:'取消',exact:true}).click();await page.waitForTimeout(700);
+const result=await page.evaluate(async url=>{const {readLocal}=await import(url);return {w:await readLocal('workspace'),before:await readLocal('checkpoint:before-schema3')};},storageUrl);
+assert.equal(result.w.project.schema,3);assert.equal(result.before.project.schema,2);assert.equal(result.w.project.management['P-R03'].note,'保留人工记录');assert(result.w.project.locks.includes('/rooms/P-R03/name'));assert.equal(Object.keys(result.w.project.rooms).length,309);assert.deepEqual(errors,[]);
+await page.screenshot({path:'build/unification/upgrade-phone.png'});await browser.close();console.log('WORKSPACE UPGRADE BROWSER: checkpoint, 309 rooms, manual data and locks preserved');

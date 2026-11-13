@@ -7,12 +7,13 @@ const path=(room,eid)=>`/rooms/${esc(room)}/entities/${esc(eid)}`;
 
 export function instantiateElement(project,roomId,definitionId,position,instanceId=id('element')) {
  const room=project.rooms[roomId],catalog=project.catalog.elements,definition=catalog?.definitions[definitionId];
- assert(room&&definition&&point(position),'definition','要素定义或放置位置无效');
+ assert(room&&definition&&definition.placeable!==false&&point(position),'definition','要素定义或放置位置无效');
  const members=definition.members||[{id:'',definition:definitionId,offset:[0,0]}],entities={};
  for(const member of members){
   const d=catalog.definitions[member.definition];assert(d&&!d.members,'definition','组合必须引用已登记的单个要素');
   const eid=member.id?instanceId+'/'+member.id:instanceId,p={...clone(d.defaults||{}),...clone(member.properties||{})},at=position.map((v,i)=>v+(member.offset?.[i]||0)),field=d.position_field||'position';
-  if(['rect','bounds'].includes(field))p[field]=[...at,...p[field].slice(2)];else p[field]=at;
+  for(const key of d.offset_fields||[])p[key]=p[key].map((v,i)=>v+at[i]);
+  if(field==='polygon')p.points=p.points.map(pt=>pt.map((n,i)=>n+at[i]));else if(['rect','bounds'].includes(field))p[field]=[...at,...p[field].slice(2)];else p[field]=at;
   const e={id:eid,component:d.component,definition_id:member.definition,definition_version:d.version,order:Object.keys(room.entities).length+Object.keys(entities).length,properties:p};
   if(definition.members)e.assembly_id=instanceId;
   if(!d.component.startsWith('array:')){e.node_name=nodeName(eid);e.parent='';if(catalog.behaviors[d.component]?.state)p.element_id=eid;}
@@ -20,18 +21,24 @@ export function instantiateElement(project,roomId,definitionId,position,instance
   assert(!room.entities[eid],'identity','实例ID已存在');entities[eid]=e;
  }
  for(const link of definition.links||[]){const p=entities[instanceId+'/'+link.source].properties;p.links||=[];p.links.push({output:link.output||'active',input:link.input||'set_active',target:instanceId+'/'+link.target});}
- return Object.values(entities).map(value=>({op:'add',path:path(roomId,value.id),value}));
+ const ops=Object.values(entities).map(value=>({op:'add',path:path(roomId,value.id),value}));
+ for(const e of Object.values(entities))if(e.component==='WorldNpc'){const npcId=id('npc');e.properties.npc_id=npcId;e.properties.display_name='新居民';ops.push({op:'add',path:'/npcs/'+esc(npcId),value:{id:npcId,room_id:roomId,physical_room:roomId,section_id:'main',display_name:'新居民',host:e.id,services:[]}});}
+ return ops;
 }
 
 export function validateElements(room,catalog,surfaceStyles) {
  const issues=[],add=(code,id,message)=>issues.push({code,path:path(room.id,id),message,severity:'error'}),rows=room.entities||{};
+ const bindings=new Set();
+ if(catalog){const root=catalog.definitions[room.root?.definition_id];if(!root||!catalog.behaviors[root.component]?.root)add('root_definition','root','房间缺少已登记的根定义');const reserved=new Set([...Object.values(catalog.behaviors).map(b=>b.storage_field),...Object.values(catalog.definitions).flatMap(d=>Object.keys(d.room_bindings||{}))]);for(const field of Object.keys(room.root?.properties||{}))if(reserved.has(field))add('root_owner','root','此参数由独立实例持有：'+field);}
  for(const [eid,e] of Object.entries(rows)){
-  if(e.definition_id){const d=catalog?.definitions?.[e.definition_id];if(!d||d.component!==e.component||d.version!==(e.definition_version??1))add('definition',eid,'要素定义或版本与运行包不匹配');}
+  for(const field of Object.keys(catalog?.definitions?.[e.definition_id]?.room_bindings||{})){if(bindings.has(field))add('duplicate_host',eid,'房间服务已有宿主：'+field);bindings.add(field);}
+  if(catalog&&!e.definition_id)add('definition',eid,'实例必须引用登记定义');
+  if(catalog&&e.definition_id){const d=catalog?.definitions?.[e.definition_id];if(!d||d.component!==e.component||d.version!==(e.definition_version??1))add('definition',eid,'要素定义或版本与运行包不匹配');}
   const behavior=catalog?.behaviors?.[e.component],p=e.properties||{};
   if(behavior?.state&&p.element_id!==eid)add('element_identity',eid,'运行身份必须等于实例ID');
-  for(const [key,spec] of Object.entries(behavior?.fields||{})){
-   const v=p[key];if(v===undefined){if(spec.required)add('field_missing',eid,'缺少参数：'+key);continue;}
-   const valid={number:()=>finite(v)&&(spec.min===undefined||v>=spec.min),bool:()=>typeof v==='boolean',string:()=>typeof v==='string',point:()=>point(v)&&(spec.min_component===undefined||v.every(n=>n>=spec.min_component)),rect:()=>rect(v),points:()=>Array.isArray(v)&&v.every(point)}[spec.type];
+  for(const [key,spec,v] of [...Object.entries(behavior?.fields||{}).map(([k,s])=>[k,s,p[k]]),...Object.entries(catalog?.definitions?.[e.definition_id]?.parameter_fields||{}).map(([k,s])=>['parameters.'+k,s,p.parameters?.[k]])]){
+   if(v===undefined){if(spec.required)add('field_missing',eid,'缺少参数：'+key);continue;}
+   const valid={dict:()=>v!==null&&typeof v==='object'&&!Array.isArray(v),array:()=>Array.isArray(v),number:()=>finite(v)&&(spec.min===undefined||v>=spec.min),bool:()=>typeof v==='boolean',string:()=>typeof v==='string',point:()=>point(v)&&(spec.min_component===undefined||v.every(n=>n>=spec.min_component)),rect:()=>rect(v),points:()=>Array.isArray(v)&&v.every(point)}[spec.type];
    if(valid&&!valid()||spec.choices&&!spec.choices.includes(v))add('element_parameter',eid,'参数不合法：'+key);
   }
   if(p.links!==undefined&&!Array.isArray(p.links)){add('signal',eid,'信号连接必须是数组');continue;}
@@ -66,6 +73,7 @@ export function moveElement(project,roomId,entityId,position) {
  let changed=true;while(changed){changed=false;for(const r of Object.values(rows))if(group.has(r.properties?.host_id)&&!group.has(r.id)){group.add(r.id);changed=true;}}
  return [...group].map(eid=>{const original=rows[eid],pos=entityPosition(original),value=entityWithPosition(original,pos.map((v,i)=>v+delta[i]));
   if(value.properties.access_points)value.properties.access_points=value.properties.access_points.map(pt=>pt.map((v,i)=>v+delta[i]));
+  for(const key of project.catalog.elements?.definitions[value.definition_id]?.offset_fields||[])value.properties[key]=value.properties[key].map((v,i)=>v+delta[i]);
   return {op:'replace',path:path(roomId,eid),value};});
 }
 
@@ -83,6 +91,7 @@ export function duplicateElements(project,roomId,entityIds,offset=[32,32]) {
  const rows=project.rooms[roomId].entities,selected=new Set(entityIds);
  for(const eid of entityIds){const group=rows[eid]?.assembly_id;if(group)for(const r of Object.values(rows))if(r.assembly_id===group)selected.add(r.id);}
  let expanded=true;while(expanded){expanded=false;for(const e of Object.values(rows))if(selected.has(e.properties?.host_id)&&!selected.has(e.id)){selected.add(e.id);expanded=true;}}
+ for(const eid of selected)assert(!rows[eid].properties.npc_id&&!rows[eid].properties.action_id&&!rows[eid].properties.parameters?.reward_action,'owned_identity','NPC或奖励宿主需通过对应面板创建新身份；移动可保留原身份');
  const remap=Object.fromEntries([...selected].map(eid=>[eid,id('element')])),groups={};
  return [...selected].map(eid=>{const old=rows[eid],value=entityWithPosition(old,entityPosition(old).map((v,i)=>v+offset[i]));value.id=remap[eid];
   if(value.properties.element_id)value.properties.element_id=value.id;if(value.properties.id)value.properties.id=value.id;
@@ -93,6 +102,7 @@ export function duplicateElements(project,roomId,entityIds,offset=[32,32]) {
   for(const key of ['drive_id','host_id','surface_platform_id'])if(value.properties[key])value.properties[key]=remap[value.properties[key]]||value.properties[key];
   if(value.properties.facing_platform_ids)value.properties.facing_platform_ids=value.properties.facing_platform_ids.map(ref=>remap[ref]||ref);
   if(value.properties.access_points)value.properties.access_points=value.properties.access_points.map(pt=>pt.map((v,i)=>v+offset[i]));
+  for(const key of project.catalog.elements?.definitions[value.definition_id]?.offset_fields||[])value.properties[key]=value.properties[key].map((v,i)=>v+offset[i]);
   return {op:'add',path:path(roomId,value.id),value};});
 }
 

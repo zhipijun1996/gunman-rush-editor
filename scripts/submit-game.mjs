@@ -3,7 +3,7 @@ import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
 const args=process.argv.slice(2),packagePath=resolve(args[0]||'game-change-package.json'),game=resolve(args.includes('--game')?args[args.indexOf('--game')+1]:'../gunman-rush');
-const packageData=JSON.parse(await readFile(packagePath));if(packageData.schema!==2)throw Error('需要schema 2定稿包');
+const packageData=JSON.parse(await readFile(packagePath));if(packageData.schema!==3)throw Error('需要schema 3定稿包');
 const temp=await mkdtemp(join(tmpdir(),'gunman-editor-submit-')),checkout=join(temp,'game'),output=join(temp,'prepared'),branch='editor/'+crypto.randomUUID();
 const run=(bin,argv,cwd=game)=>execFileSync(bin,argv,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 run('git',['fetch','origin','main']);run('git',['worktree','add','--detach',checkout,'origin/main']);
