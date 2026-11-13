@@ -4,7 +4,7 @@
 
 ## 基线与写集
 
-按用户指定，以编辑器PR2 `ea64991`、主游戏PR156 `6af8200` 接续。当前修复分支 `fix/chatgpt-auth-retry` 从 `ca4dbbd` 接续，依赖编辑器[PR3](https://github.com/zhipijun1996/gunman-rush-editor/pull/3)的 `feat/phone-editor-workflow`；游戏来源修复由配套[PR157](https://github.com/zhipijun1996/gunman-rush/pull/157)持有。本轮只修改编辑器授权、手机房内编辑及对应验证文档；不合并main、不部署旧Site，不提交素材、草稿、构建产物或凭据。
+按用户指定，以编辑器PR2 `ea64991`、主游戏PR156 `6af8200` 接续。当前修复由[PR4](https://github.com/zhipijun1996/gunman-rush-editor/pull/4)持有，分支 `fix/chatgpt-auth-retry` 从 `ca4dbbd` 接续，依赖编辑器[PR3](https://github.com/zhipijun1996/gunman-rush-editor/pull/3)的 `feat/phone-editor-workflow`；游戏来源修复由配套[PR157](https://github.com/zhipijun1996/gunman-rush/pull/157)持有。本轮只修改编辑器授权、手机房内编辑及对应验证文档；不合并main、不部署旧Site，不提交素材、草稿、构建产物或凭据。
 
 ## 当前交付
 
@@ -16,7 +16,7 @@ AI在明确范围内校验后直接更新草稿，支持停止、差异及任务
 
 ## 实际验证
 
-36项Node测试、前端生产构建、21项Android单元测试与签名Release APK构建通过。13项授权协议测试使用真实本地HTTP服务、回调及RSA签名，覆盖公钥超时后恢复／跨实例重试、客户端身份复用、签名与声明拒绝、取消和迟到响应、重复回调参数、发现地址校验、刷新令牌轮换与原身份保护；其余8项验证模型目录和响应流。
+36项Node测试、前端生产构建、21项Android单元测试与签名Release APK构建通过，PR4自动web-and-core检查通过。13项授权协议测试使用真实本地HTTP服务、回调及RSA签名，覆盖公钥超时后恢复／跨实例重试、客户端身份复用、签名与声明拒绝、取消和迟到响应、重复回调参数、发现地址校验、刷新令牌轮换与原身份保护；其余8项验证模型目录和响应流。
 
 Chromium390×844触摸操作覆盖单击进房、点实例打开属性、修改宽度与触摸拖动只改实例；授权界面验证身份重试不再发起授权以及重启恢复。桌面及分类／元素专项检查通过。浏览器授权与试玩使用模拟原生桥接，媒体有明确标注；不能据此声称Android真机或真实ChatGPT账号成功。Java/OkHttp＋Nimbus实测官方发现与公钥端点HTTP200、读取4把公钥；未使用用户账号，未执行真实AI编辑。
 
@@ -24,6 +24,6 @@ APK内前端逐文件与当前构建一致；数据及运行包schema3和行为�
 
 ## 发行与后续
 
-0.2.1（versionCode4）已构建，发行准备中。安装包172436673字节，SHA256 `8a894360510c88152ba346b1482dfab42083ba1ae9c8b7c1043979406a618118`。发行文件只放Release，源码不带APK／PCK或媒体；本地证据在 `build/auth-room`，交付附件在 `build/release-0.2.1`。录屏为正常速度约12秒，标注手机触摸模拟和授权模拟桥接。
+[0.2.1预览版](https://github.com/zhipijun1996/gunman-rush-editor/releases/tag/v0.2.1-preview.1)（versionCode4）已发布，代码构建基线 `c7aafab`。七个附件均已核对服务器SHA256；无需登录的安装包完整下载摘要一致。安装包172436673字节，SHA256 `8a894360510c88152ba346b1482dfab42083ba1ae9c8b7c1043979406a618118`。发行文件只放Release，源码不带APK／PCK或媒体；本地证据在 `build/auth-room`，交付附件在 `build/release-0.2.1`。录屏为正常速度约12秒，标注手机触摸模拟和授权模拟桥接。
 
 待实际手机更新后验证ChatGPT授权、模型读取并成功执行一次编辑，以及系统浏览器返回体验。Android真机帧率、在线更新／定稿往返未验证。若仍失败，只收集安全诊断，不索取授权网址、授权码或令牌。签名保存在仓库外私有目录，远端加密备份未完成，必须保留已有密钥。上传使用明确的私有CLI配置，核服务器摘要及无需登录的完整下载。
