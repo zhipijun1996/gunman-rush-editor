@@ -156,3 +156,9 @@ export function terrainPaintError(paint,catalog){
  }
  return '';
 }
+
+/** Start additions inside the room's principal chamber, not its bounding-box void. */
+export function placementPoint(room) {
+ const chamber=[...(room.spaces?.length?room.spaces:[room.bounds])].sort((a,b)=>b[2]*b[3]-a[2]*a[3])[0];
+ return [Math.round((chamber[0]+chamber[2]/2)/8)*8,Math.round((chamber[1]+chamber[3]/2)/8)*8];
+}

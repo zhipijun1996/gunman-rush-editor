@@ -89,6 +89,7 @@ class EditorActivity : ComponentActivity() {
                     val result: Any = when (req.optString("method")) {
                         "auth.signIn" -> auth.signIn()
                         "auth.status" -> auth.status()
+                        "auth.retry" -> auth.retryIdentity()
                         "auth.signOut" -> auth.signOut()
                         "ai.models" -> ai.models()
                         "ai.response" -> ai.response(params, requestId)

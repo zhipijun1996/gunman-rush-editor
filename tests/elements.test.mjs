@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createProject,createRoom,validateProject,entityPosition} from '../packages/core/model.mjs';
 import {applyTransaction} from '../packages/core/transactions.mjs';
-import {instantiateElement,duplicateElements,linkElements,moveElement,attachSpikes,paintMaterial,setElementField,removeElements} from '../packages/core/elements.mjs';
+import {instantiateElement,duplicateElements,linkElements,moveElement,attachSpikes,paintMaterial,setElementField,removeElements,placementPoint} from '../packages/core/elements.mjs';
 function fixture(){const p=createProject(),r=createRoom();p.rooms[r.id]=r;p.catalog.elements={behaviors:{FixedWorldRoom:{root:true},Switch:{outputs:{active:'bool'},fields:{},state:{active:{}}},Gate:{inputs:{set_active:'bool'},fields:{},state:{active:{}}},'array:platforms':{fields:{}},'array:spike_strips':{fields:{}}},definitions:{'room.standard':{version:1,component:'FixedWorldRoom'},switch:{version:1,component:'Switch',defaults:{links:[],position:[0,0]}},gate:{version:1,component:'Gate',defaults:{position:[0,0]}},'platform.solid':{version:1,component:'array:platforms',position_field:'rect',defaults:{rect:[0,0,160,64]}},'hazard.spikes':{version:1,component:'array:spike_strips',position_field:'bounds',defaults:{bounds:[0,0,96,24],facing:'up'}},assembly:{version:1,members:[{id:'switch',definition:'switch'},{id:'gate',definition:'gate',offset:[128,0]}],links:[{source:'switch',target:'gate'}]}}};p.catalog.terrain_materials={materials:{stone:{}}};return [p,r.id];}
 const apply=(p,ops)=>applyTransaction(p,{base_revision:p.revision,operations:ops}).project;
 test('data-only assembly creates independent stable instances and typed links',()=>{let[p,r]=fixture();p=apply(p,instantiateElement(p,r,'assembly',[160,240],'pair'));assert.equal(p.rooms[r].entities['pair/switch'].properties.links[0].target,'pair/gate');assert.deepEqual(validateProject(p),[]);assert.deepEqual(entityPosition(p.rooms[r].entities['pair/gate']),[288,240]);});
@@ -18,3 +18,9 @@ test('raw resize cannot silently detach danger; malformed signal input produces 
 test('raw appearance edits reject unknown versions, materials and duplicate IDs atomically',()=>{let[p,r]=fixture();p=apply(p,paintMaterial(p,r,[0,0,32,32],'stone'));const root=structuredClone(p.rooms[r].root),original=JSON.stringify(root);root.properties.terrain_paint.version=2;assert.throws(()=>apply(p,[{op:'replace',path:`/rooms/${r}/root`,value:root}]));root.properties.terrain_paint.version=1;root.properties.terrain_paint.regions.push({...root.properties.terrain_paint.regions[0]});assert.throws(()=>apply(p,[{op:'replace',path:`/rooms/${r}/root`,value:root}]));assert.equal(JSON.stringify(p.rooms[r].root),original);});
 
 test('distinct stable IDs cannot collapse to the same generated scene name',()=>{let[p,r]=fixture();const first=instantiateElement(p,r,'switch',[0,0],'a/b')[0].value,second=instantiateElement(p,r,'switch',[0,0],'a_b')[0].value;assert.notEqual(first.node_name,second.node_name);});
+
+test('adding an element in a concave room starts in its chamber rather than the bounding void',()=>{
+ const room={bounds:[0,0,2000,2000],spaces:[[0,1600,2000,400],[1600,0,400,1600]]};
+ const point=placementPoint(room);assert(room.spaces.some(([x,y,w,h])=>point[0]>=x&&point[0]<=x+w&&point[1]>=y&&point[1]<=y+h));
+ assert(!(point[0]===1000&&point[1]===1000));
+});
