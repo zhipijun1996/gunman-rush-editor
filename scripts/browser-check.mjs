@@ -1,0 +1,15 @@
+import {chromium} from '@playwright/test';
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+const context=await browser.newContext({viewport:{width:1440,height:1000},deviceScaleFactor:1});
+const page=await context.newPage();let errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.goto('http://127.0.0.1:5173');await page.getByText('房间目录',{exact:true}).waitFor();await page.waitForTimeout(800);
+await page.getByText(/265 间规划房待空间排布/).waitFor();
+await page.screenshot({path:'build/world-editor.png'});
+await page.getByRole('button',{name:'显示待排规划',exact:true}).click();await page.getByText(/265 间待空间校准规划房/).waitFor();await page.screenshot({path:'build/world-planning.png'});
+await page.getByRole('button',{name:'隐藏待排规划',exact:true}).click();
+await page.getByLabel('搜索房间').fill('P-R13');await page.getByRole('button').filter({hasText:'P-R13'}).first().click();
+await page.getByLabel('选择实例').waitFor();await page.screenshot({path:'build/room-editor.png'});
+await page.getByRole('button',{name:'路线',exact:true}).click();await page.getByRole('button',{name:'H 钩索',exact:true}).click();
+await page.screenshot({path:'build/reachability.png'});
+await page.setViewportSize({width:390,height:844});await page.screenshot({path:'build/phone-editor.png'});
+console.log(JSON.stringify({errors,url:page.url()}));await browser.close();if(errors.length)process.exit(1);

@@ -1,0 +1,4 @@
+const requests=new Map();
+export function nativeAvailable(){return !!globalThis.GunmanNative?.request;}
+export function nativeRequest(method,params={}){return new Promise((resolve,reject)=>{if(!nativeAvailable()){reject(new Error('此功能需要原生 APK'));return;}const request_id=crypto.randomUUID();const timeout=setTimeout(()=>{requests.delete(request_id);reject(new Error('原生请求超时'));},['auth.signIn','runtime.ensure','preview.open','ai.response'].includes(method)?300000:120000);requests.set(request_id,{resolve,reject,timeout});globalThis.GunmanNative.request(JSON.stringify({request_id,method,params}));});}
+globalThis.__gunmanNativeResult=(message)=>{const data=typeof message==='string'?JSON.parse(message):message;const pending=requests.get(data.request_id);if(!pending)return;requests.delete(data.request_id);clearTimeout(pending.timeout);if(data.error)pending.reject(new Error(data.error));else pending.resolve(data.result);};
