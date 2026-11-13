@@ -41,6 +41,7 @@ await page.getByLabel('搜索房间').fill('P-R03'); // clear region before find
 await page.getByLabel('区域',{exact:true}).selectOption('');
 await page.getByRole('button').filter({hasText:'P-R03'}).first().click();
 await page.getByLabel('选择实例').waitFor();
+await page.getByRole('button',{name:'房间',exact:true}).click();
 const initialName=await page.getByText('房间名称',{exact:true}).locator('..').locator('input').inputValue();
 await page.getByRole('button',{name:'AI',exact:true}).click();
 await page.getByRole('button',{name:'连接ChatGPT',exact:true}).click();await page.getByText('模型已连接，可以开始编辑',{exact:true}).waitFor();
@@ -51,12 +52,12 @@ await page.getByRole('button',{name:'撤销本次任务',exact:true}).waitFor();
 assert.ok(await page.locator('.breadcrumbs').innerText().then(t=>t.includes('AI修改')));
 await page.screenshot({path:'build/workflow/phone-ai.png'});
 // A later human edit in the same room must survive task undo.
-await page.getByRole('button',{name:'编辑',exact:true}).click();
+await page.getByRole('button',{name:'房间',exact:true}).click();
 const purpose=page.getByText('一句话职责',{exact:true}).locator('..').locator('textarea');
 await purpose.fill('人工保留的房间职责');await purpose.blur();
 await page.getByRole('button',{name:'AI',exact:true}).click();
 await page.getByRole('button',{name:'撤销本次任务',exact:true}).click();
-await page.getByRole('button',{name:'编辑',exact:true}).click();
+await page.getByRole('button',{name:'房间',exact:true}).click();
 assert.equal(await page.getByText('房间名称',{exact:true}).locator('..').locator('input').inputValue(),initialName);
 assert.equal(await page.getByText('一句话职责',{exact:true}).locator('..').locator('textarea').inputValue(),'人工保留的房间职责');
 // Real pointer move/resize paths, not just editing numeric inputs.
@@ -93,8 +94,9 @@ await page.getByRole('alert').getByRole('button',{name:'×',exact:true}).click()
 await page.evaluate(()=>window.__testNative.failRuntime=false);
 await page.getByRole('button',{name:'载入新版',exact:true}).click();
 await page.getByRole('heading',{name:'载入新版游戏数据',exact:true}).waitFor({state:'hidden'});
-await page.getByRole('button',{name:'房间',exact:true}).click();
+await page.getByRole('button',{name:'目录',exact:true}).click();
 await page.getByLabel('搜索房间').fill('P-R03');await page.getByRole('button').filter({hasText:'P-R03'}).first().click();
+await page.getByRole('button',{name:'房间',exact:true}).click();
 assert.equal(await page.getByText('房间名称',{exact:true}).locator('..').locator('input').inputValue(),'新版初行草坡');
 await page.getByRole('button',{name:'AI',exact:true}).click();assert.equal(await page.getByRole('button',{name:'撤销本次任务',exact:true}).count(),0);
 await page.waitForTimeout(400);await page.reload();await page.getByText('模型已连接，可以开始编辑',{exact:true}).waitFor();

@@ -43,3 +43,5 @@ aside nav button{min-height:40px}
  .toast{bottom:12px;left:10px;max-width:calc(100% - 20px);font-size:12px}.room-card{min-height:88px}
 }
 @media(max-height:560px){.stage{min-height:150px}.map-toolbar{flex-wrap:nowrap}.statusbar{display:none}aside{min-height:105px}}
+
+.room-entry{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 10px;background:#273e38;flex-shrink:0}.room-entry span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.room-entry button{min-height:42px;white-space:nowrap}.auth-diagnostic pre{white-space:pre-wrap;user-select:text}

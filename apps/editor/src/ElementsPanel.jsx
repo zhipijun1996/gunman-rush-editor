@@ -1,12 +1,12 @@
 import React,{useState} from 'react';
-import {instantiateElement,linkElements,duplicateElements,attachSpikes,setElementField,removeElements} from '../../../packages/core/elements.mjs';
+import {instantiateElement,linkElements,duplicateElements,attachSpikes,setElementField,removeElements,placementPoint} from '../../../packages/core/elements.mjs';
 import {clone,entityPosition} from '../../../packages/core/model.mjs';
 const esc=s=>s.replaceAll('~','~0').replaceAll('/','~1');
 export default function ElementsPanel({project,room,entity,apply,onSelect,brush,setBrush,setTool}){
  const [library,setLibrary]=useState('');
  const [target,setTarget]=useState(''),[face,setFace]=useState('up'),[input,setInput]=useState('set_active'),[output,setOutput]=useState('active'),[issue,setIssue]=useState('');
  const catalog=project.catalog.elements;if(!catalog)return <p>当前游戏包尚未提供关卡要素目录。</p>;
- const safe=fn=>{try{setIssue('');fn();}catch(e){setIssue(e.message);}},center=[room.bounds[0]+room.bounds[2]/2,room.bounds[1]+room.bounds[3]/2],behavior=catalog.behaviors[entity?.component];
+ const safe=fn=>{try{setIssue('');fn();}catch(e){setIssue(e.message);}},center=placementPoint(room),behavior=catalog.behaviors[entity?.component];
  const update=(key,value)=>apply(setElementField(project,room.id,entity.id,key,value),'调整关卡要素');
  const labels={duration:'开启时长（秒，0为不限时）',repeat_enabled:'允许反复触发',period:'往返周期（秒）',phase:'初始相位',phase_offset:'起始时间（秒）',endpoint_dwell:'端点停留（秒）',endpoint:'运动终点偏移',platform_size:'承载尺寸',travel:'往返范围',one_way:'允许从下方穿越'};
  return <section className="elements-panel"><h3>关卡要素</h3>{issue&&<p role="alert">{issue}</p>}

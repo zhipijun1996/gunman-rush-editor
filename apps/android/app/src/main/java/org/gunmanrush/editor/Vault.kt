@@ -12,7 +12,7 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /** Tokens never cross the WebView bridge, enter backups or appear in logs. */
-class Vault(context: Context) {
+class Vault(context: Context) : AuthStorage {
     private val prefs = context.getSharedPreferences("credentials", Context.MODE_PRIVATE)
     private val key: SecretKey get() {
         val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
@@ -24,17 +24,17 @@ class Vault(context: Context) {
         }
         return store.getKey("editor-vault", null) as SecretKey
     }
-    @Synchronized fun read(name: String): JSONObject? {
+    @Synchronized override fun read(name: String): JSONObject? {
         val raw = prefs.getString(name, null) ?: return null
         val bytes = Base64.decode(raw, Base64.NO_WRAP)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, bytes.copyOfRange(0, 12)))
         return JSONObject(String(cipher.doFinal(bytes.copyOfRange(12, bytes.size)), Charsets.UTF_8))
     }
-    @Synchronized fun write(name: String, value: JSONObject) {
+    @Synchronized override fun write(name: String, value: JSONObject) {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding"); cipher.init(Cipher.ENCRYPT_MODE, key)
         val bytes = cipher.iv + cipher.doFinal(value.toString().toByteArray(Charsets.UTF_8))
         check(prefs.edit().putString(name, Base64.encodeToString(bytes, Base64.NO_WRAP)).commit()) { "无法安全保存登录" }
     }
-    @Synchronized fun remove(name: String) { check(prefs.edit().remove(name).commit()) }
+    @Synchronized override fun remove(name: String) { check(prefs.edit().remove(name).commit()) }
 }
