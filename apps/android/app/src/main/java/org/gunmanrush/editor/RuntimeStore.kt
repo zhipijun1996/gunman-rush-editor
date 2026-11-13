@@ -13,7 +13,7 @@ class RuntimeStore(private val context: Context) {
     private val root = File(context.filesDir, "runtimes").apply { mkdirs() }
     private val http = OkHttpClient.Builder().connectTimeout(20, TimeUnit.SECONDS).readTimeout(180, TimeUnit.SECONDS).build()
     private fun sha(file: File): String = MessageDigest.getInstance("SHA-256").let { digest -> file.inputStream().use { input -> val bytes=ByteArray(65536);while(true){val n=input.read(bytes);if(n<0)break;digest.update(bytes,0,n)} };digest.digest().joinToString(""){"%02x".format(it)} }
-    private fun matches(meta: JSONObject, source: JSONObject): Boolean = if(source.optString("behavior_hash").isNotEmpty()) meta.optString("behavior_hash")==source.getString("behavior_hash") else meta.optString("content_version")==source.getString("content_version")
+    private fun matches(meta: JSONObject, source: JSONObject): Boolean = meta.optInt("document_schema")==3 && (if(source.optString("behavior_hash").isNotEmpty()) meta.optString("behavior_hash")==source.getString("behavior_hash") else meta.optString("content_version")==source.getString("content_version"))
     private fun approved(url: String): Boolean = url.startsWith("https://github.com/zhipijun1996/gunman-rush/releases/download/")
     @Synchronized fun ensure(project: JSONObject): JSONObject {
         val source=project.getJSONObject("source")

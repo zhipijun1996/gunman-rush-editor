@@ -1,4 +1,5 @@
-export const SCHEMA=2;
+import {validateElements,terrainPaintError} from './elements.mjs';
+export const SCHEMA=3;
 export class EditorError extends Error {constructor(code,message,details={}){super(message);this.code=code;this.details=details;}}
 export const clone=value=>structuredClone(value);
 export const canonical=value=>JSON.stringify(sort(value));
@@ -9,11 +10,11 @@ export const finite=v=>typeof v==='number'&&Number.isFinite(v);
 export const point=v=>Array.isArray(v)&&v.length===2&&v.every(finite);
 export const rect=v=>Array.isArray(v)&&v.length===4&&v.every(finite)&&v[2]>0&&v[3]>0;
 export function createProject(source={}){return {schema:SCHEMA,id:id('project'),revision:0,source,rooms:{},connections:{},rewards:{},npcs:{},catalog:{components:{},resources:[],enemies:[]},management:{},locks:[],metadata:{name:'失序之钟 · 世界工坊'}};}
-export function createRoom(region='P',origin=[0,0]){const roomId=region+'-R'+crypto.randomUUID().replaceAll('-','').slice(0,10);return {id:roomId,region,name:'新房间',purpose:'待设计',origin,layer:'world',bounds:[0,0,1280,720],spaces:[[0,0,1280,720]],sections:{main:{id:'main',name:'主体',kind:'main',known:true,point:[640,360]}},routes:{},ports:{},entities:{},root:{component:'FixedWorldRoom',properties:{}},camera:{profile:'bounded_follow',transition:'occluded',zones:[],links:[]},implemented:false};}
+export function createRoom(region='P',origin=[0,0]){const roomId=region+'-R'+crypto.randomUUID().replaceAll('-','').slice(0,10);return {id:roomId,region,name:'新房间',purpose:'待设计',origin,layer:'world',bounds:[0,0,1280,720],spaces:[[0,0,1280,720]],sections:{main:{id:'main',name:'主体',kind:'main',known:true,point:[640,360]}},routes:{},ports:{},entities:{},root:{definition_id:'room.standard',definition_version:1,component:'FixedWorldRoom',properties:{}},camera:{profile:'bounded_follow',transition:'occluded',zones:[],links:[]},implemented:false};}
 export function roomBounds(room){const [x,y,w,h]=room.bounds;return [room.origin[0]+x,room.origin[1]+y,w,h];}
-export function entityPosition(e){const p=e.properties||{};return p.position||p.point||p.bell||(p.rect?[p.rect[0],p.rect[1]]:p.bounds?[p.bounds[0],p.bounds[1]]:[0,0]);}
-export function entityRect(e){const p=e.properties||{},pos=entityPosition(e);return p.rect||p.bounds||[pos[0]-12,pos[1]-24,24,24];}
-export function entityWithPosition(entity,pos){const e=clone(entity),p=e.properties;if(p.rect)p.rect=[...pos,...p.rect.slice(2)];else if(p.bounds)p.bounds=[...pos,...p.bounds.slice(2)];else if(p.point)p.point=pos;else if(p.bell)p.bell=pos;else p.position=pos;return e;}
+export function entityPosition(e){const p=e.properties||{};return p.rect?p.rect.slice(0,2):p.bounds?p.bounds.slice(0,2):p.position||p.point||p.points?.[0]||[0,0];}
+export function entityRect(e){const p=e.properties||{},pos=entityPosition(e);if(p.points?.length){const xs=p.points.map(v=>v[0]),ys=p.points.map(v=>v[1]);return [Math.min(...xs),Math.min(...ys),Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys)];}return p.rect||p.bounds||(p.platform_size?[pos[0]-p.platform_size[0]/2,pos[1]-p.platform_size[1]/2,...p.platform_size]:[pos[0]-12,pos[1]-24,24,24]);}
+export function entityWithPosition(entity,pos){const e=clone(entity),p=e.properties;if(p.rect)p.rect=[...pos,...p.rect.slice(2)];else if(p.bounds)p.bounds=[...pos,...p.bounds.slice(2)];else if(p.point)p.point=pos;else if(p.points){const delta=pos.map((n,i)=>n-p.points[0][i]);p.points=p.points.map(pt=>pt.map((n,i)=>n+delta[i]));}else p.position=pos;return e;}
 export function findEntity(project,entityId){for(const room of Object.values(project.rooms)){if(room.entities?.[entityId])return {room,entity:room.entities[entityId]};}return null;}
 export function validateProject(p){const issues=[];const issue=(code,path,message,severity='error')=>issues.push({code,path,message,severity});
  if(p.schema!==SCHEMA)issue('schema','/schema','不支持的数据版本');
@@ -28,6 +29,8 @@ export function validateProject(p){const issues=[];const issue=(code,path,messag
    if(!point(entityPosition(e)))issue('entity_position',`/rooms/${rid}/entities/${eid}`,'实例坐标无效');
    if(e.properties?.rect&&!rect(e.properties.rect))issue('entity_rect',`/rooms/${rid}/entities/${eid}`,'地形尺寸无效');
   }
+  issues.push(...validateElements(r,p.catalog?.elements,p.catalog?.surface_styles));
+  const paintError=terrainPaintError(r.root?.properties?.terrain_paint,p.catalog?.terrain_materials);if(paintError)issue('terrain_paint',`/rooms/${rid}/root/properties/terrain_paint`,paintError);
   for(const route of Object.values(r.routes||{})){if(!r.sections?.[route.from]||!r.sections?.[route.to])issue('route_endpoint',`/rooms/${rid}/routes/${route.id}`,'房内路线引用了不存在的分区');if(route.requires!==null&&!validCondition(route.requires))issue('condition',`/rooms/${rid}/routes/${route.id}/requires`,'通路条件必须为OR-of-AND字符串数组');}
   for(const port of Object.values(r.ports||{})){if(!r.sections?.[port.section])issue('port_section',`/rooms/${rid}/ports/${port.id}`,'入口没有合法的房内分区');if(port.connection&&!p.connections[port.connection])issue('port_connection',`/rooms/${rid}/ports/${port.id}`,'入口引用了不存在的连接');}
  }
@@ -35,7 +38,7 @@ export function validateProject(p){const issues=[];const issue=(code,path,messag
  const actions=new Set();
  for(const reward of Object.values(p.rewards||{})){
   if(actions.has(reward.action_id))issue('reward_receipt',`/rewards/${reward.id}`,'永久奖励身份重复');if(reward.action_id)actions.add(reward.action_id);
-  if(reward.host){const hit=entities.get(reward.host),root=p.rooms[reward.room];const rootHost=reward.host===reward.room+':root'&&reward.host_field&&point(root?.root.properties[reward.host_field]);if(!rootHost&&(!hit||hit.room.id!==reward.room))issue('reward_host',`/rewards/${reward.id}`,'奖励缺少唯一实际宿主');if(hit&&hit.entity.properties.action_id!==reward.action_id)issue('reward_action',`/rewards/${reward.id}`,'奖励身份与实际宿主不一致');}
+  if(reward.host){const hit=entities.get(reward.host);if(!hit||hit.room.id!==reward.room)issue('reward_host',`/rewards/${reward.id}`,'奖励缺少唯一实际宿主');if(hit&&(hit.entity.properties.action_id||hit.entity.properties.parameters?.reward_action)!==reward.action_id)issue('reward_action',`/rewards/${reward.id}`,'奖励身份与实际宿主不一致');}
   else if(reward.physical)issue('reward_host',`/rewards/${reward.id}`,'地图奖励缺少实际宿主');
   if(reward.quantity!==undefined&&(!Number.isInteger(reward.quantity)||reward.quantity<1))issue('reward_quantity',`/rewards/${reward.id}/quantity`,'奖励数量必须为正整数');
  }

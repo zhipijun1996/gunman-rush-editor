@@ -9,5 +9,5 @@ export function freezeChange(baseline,project,selectedRooms){
  for(const kind of ['connections','rewards','npcs'])for(const key of new Set([...Object.keys(baseline[kind]),...Object.keys(project[kind])]))if([...owners(kind,baseline[kind][key]),...owners(kind,project[kind][key])].some(r=>scope.has(r))){if(project[kind][key])frozen[kind][key]=clone(project[kind][key]);else delete frozen[kind][key];}
  frozen.revision=project.revision;frozen.source=clone(project.source);
  const clean=p=>{const copy=clone(p);copy.management={};copy.locks=[];for(const r of Object.values(copy.rooms))delete r.preview;return copy;};
- return {schema:2,source:clone(project.source),base:clean(baseline),project:clean(frozen),selected_rooms:[...scope],requested_rooms:selectedRooms};
+ return {schema:3,source:clone(project.source),base:clean(baseline),project:clean(frozen),selected_rooms:[...scope],requested_rooms:selectedRooms};
 }

@@ -23,7 +23,7 @@ export function executeTool(project,scope,name,args,reads=new Set()){switch(name
 export async function runAgent({project,goal,scope,model,feedback=[],onProgress=()=>{},request=nativeRequest}){
  assert(model,'model','请先登录ChatGPT并选择可用模型');
  const input=[{role:'developer',content:'你是《失序之钟》的关卡设计协作者。只能通过editor工具查询并提交候选，不能直接修改草稿。保留范围外内容、稳定ID、永久奖励身份和人工锁定。先查询再修改。能力锁在房内分区之间，以真实环境实现；不生成隐形能力墙。每片空间有职责，主支路、失败恢复和接缝一致。逻辑可达不等于真实动作通过，不伪造实机评分。所有修改通过submit_candidate提交，遇到真实设计冲突用文字说明。可编辑路径为rooms/connections/rewards/npcs；房间内entities为ID映射，实例为{id,component,properties}。数组组件使用array:platforms的properties.rect/one_way、array:enemy_placements的point/behavior等；节点组件的node_name/parent需保留。新行为只能使用catalog中已有组件。'},
- {role:'user',content:JSON.stringify({goal,scope,recent_feedback:feedback.slice(-5),base_revision:project.revision,source:project.source,room_schema:{id:'room ID',region:'area code',name:'名称',purpose:'职责',origin:[0,0],layer:'world',bounds:[0,0,1280,720],spaces:[[0,0,1280,720]],sections:{main:{id:'main',known:true}},routes:{},ports:{},entities:{},root:{component:'FixedWorldRoom',properties:{}}}})}];
+ {role:'user',content:JSON.stringify({goal,scope,recent_feedback:feedback.slice(-5),base_revision:project.revision,source:project.source,room_schema:{id:'room ID',region:'area code',name:'名称',purpose:'职责',origin:[0,0],layer:'world',bounds:[0,0,1280,720],spaces:[[0,0,1280,720]],sections:{main:{id:'main',known:true}},routes:{},ports:{},entities:{},root:{definition_id:'room.standard',definition_version:1,component:'FixedWorldRoom',properties:{}}}})}];
  const candidates=[],reads=new Set();let text='';
  for(let round=0;round<12;round++){
   onProgress(`AI正在分析 · 第${round+1}轮工具调用`);

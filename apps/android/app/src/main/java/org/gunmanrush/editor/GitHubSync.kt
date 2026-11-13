@@ -23,7 +23,7 @@ class GitHubSync(private val vault: Vault) {
     fun connect(params:JSONObject):JSONObject {val token=params.getString("token").trim();check(token.length>20){"GitHub令牌格式不正确"};vault.write("github",JSONObject().put("token",token));try{call("");return JSONObject().put("connected",true)}catch(e:Exception){vault.remove("github");throw e}}
     fun disconnect():JSONObject {vault.remove("github");return JSONObject().put("connected",false)}
     fun submit(params:JSONObject):JSONObject {
-        val change=params.getJSONObject("change");check(change.getInt("schema")==2){"定稿包版本不正确"}
+        val change=params.getJSONObject("change");check(change.getInt("schema")==3){"定稿包版本不正确"}
         call("actions/workflows/editor-import.yml")
         val branch="editor/"+UUID.randomUUID()
         val head=call("git/ref/heads/main").getJSONObject("object").getString("sha")

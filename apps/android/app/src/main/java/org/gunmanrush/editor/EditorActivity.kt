@@ -100,7 +100,7 @@ class EditorActivity : ComponentActivity() {
     }
     private fun openPreview(params: JSONObject): JSONObject {
         val project = params.getJSONObject("project")
-        check(project.getInt("schema") == 2) { "预览数据版本不兼容" }
+        check(project.getInt("schema") == 3) { "预览数据版本不兼容" }
         val meta=runtimes.ensure(project)
         val previous=File(filesDir,"editor-preview.json")
         val oldPack=if(previous.exists())runCatching{JSONObject(previous.readText()).optString("runtime_pack")}.getOrNull() else null

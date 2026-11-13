@@ -1,0 +1,14 @@
+import {chromium} from '@playwright/test';
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
+const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.goto('http://127.0.0.1:5173');await page.getByLabel('搜索房间').fill('P-R03');await page.getByRole('button').filter({hasText:'P-R03'}).first().click();
+await page.getByLabel('放置要素').selectOption('assembly.bell_gate');
+await page.getByRole('button',{name:'复制要素／组合',exact:true}).click();
+await page.getByRole('button',{name:'删除要素／组合及附着物',exact:true}).click();
+await page.getByLabel('放置要素').selectOption('platform.solid');
+await page.getByLabel('危险朝向').selectOption('left');
+await page.getByRole('button',{name:'在选中平台附着尖刺',exact:true}).click();
+await page.getByLabel('绘制内容').selectOption('material');await page.getByLabel('笔刷材质').selectOption('mill_masonry');
+await page.screenshot({path:'build/elements-editor-desktop.png',fullPage:true});
+await page.setViewportSize({width:390,height:844});await page.getByLabel('放置要素').scrollIntoViewIfNeeded();await page.screenshot({path:'build/elements-editor-phone.png'});
+const alerts=await page.getByRole('alert').allTextContents();console.log(JSON.stringify({errors,alerts}));await browser.close();if(errors.length||alerts.length)process.exit(1);
