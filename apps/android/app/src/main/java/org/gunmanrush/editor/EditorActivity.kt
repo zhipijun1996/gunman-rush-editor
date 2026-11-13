@@ -59,7 +59,12 @@ class EditorActivity : ComponentActivity() {
         web.loadUrl("https://appassets.androidplatform.net/assets/editor/index.html")
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) { override fun handleOnBackPressed() { moveTaskToBack(true) } })
     }
-    override fun onDestroy() { if (!isChangingConfigurations) { web.destroy(); executor.shutdownNow() }; super.onDestroy() }
+    override fun onResume() {
+        super.onResume()
+        if (::web.isInitialized) web.post { web.evaluateJavascript("window.dispatchEvent(new Event('gunman:resume'));", null) }
+    }
+    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent) }
+    override fun onDestroy() { if (::ai.isInitialized) ai.close(); if (::auth.isInitialized) auth.cancelPending(); if (::web.isInitialized) web.destroy(); executor.shutdownNow(); super.onDestroy() }
     private fun reply(requestId: String, result: Any?, error: String?) {
         val payload = JSONObject().put("request_id", requestId)
         if (error == null) payload.put("result", result ?: JSONObject.NULL) else payload.put("error", error)
@@ -71,6 +76,8 @@ class EditorActivity : ComponentActivity() {
             val req = try { JSONObject(raw) } catch (_: Exception) { return }
             val requestId = req.optString("request_id"); if (requestId.length !in 1..100) return
             val params = req.optJSONObject("params") ?: JSONObject()
+            if (req.optString("method") == "auth.cancel") { auth.cancelPending(); reply(requestId, JSONObject().put("cancelled", true), null); return }
+            if (req.optString("method") == "request.cancel") { ai.cancel(params.optString("request_id")); reply(requestId, JSONObject().put("cancelled", true), null); return }
             if (req.optString("method") == "file.export") {
                 runOnUiThread {
                     if (export != null) reply(requestId, null, "请先完成上一次导出")
@@ -84,7 +91,7 @@ class EditorActivity : ComponentActivity() {
                         "auth.status" -> auth.status()
                         "auth.signOut" -> auth.signOut()
                         "ai.models" -> ai.models()
-                        "ai.response" -> ai.response(params)
+                        "ai.response" -> ai.response(params, requestId)
                         "preview.open" -> openPreview(params)
                         "runtime.ensure" -> runtimes.ensure(params.getJSONObject("project")).apply { remove("local_pack") }
                         "game.latest" -> runtimes.latestProject()

@@ -1,1 +1,6 @@
-{"name":"@gunman/editor","private":true,"type":"module"}
+{
+  "name": "@gunman/editor",
+  "private": true,
+  "type": "module",
+  "version": "0.2.0"
+}
