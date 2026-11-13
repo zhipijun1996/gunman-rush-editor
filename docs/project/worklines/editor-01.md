@@ -12,4 +12,6 @@
 
 签名：新编辑器使用独立签名，保存在项目外私有目录，不复用主游戏签名。当前GitHub连接写Actions secrets返回403，不能声称远端签名备份已完成；重新构建前必须保留签名，禁止用新密钥替换造成无法覆盖安装。
 
-下一动作：审核两仓PR，安装预览APK验证离线编辑→原生试玩→返回编辑，随后设备ChatGPT授权和候选采用；验证主游戏更新冲突与定稿PR往返。暂存截图／录屏／日志在build/，不提交过程产物。
+交付：编辑器[PR1](https://github.com/zhipijun1996/gunman-rush-editor/pull/1)，主游戏[PR154](https://github.com/zhipijun1996/gunman-rush/pull/154)，两仓远端检查通过。最终签名APK在build/android，校验清单及配套世界项目在build/release；APK内嵌数据／PCK哈希一致，打包后的真实预览入口已验证。GitHub Release附件上传返回401且发布未成功，不能使用不存在的发行链接。
+
+下一动作：审核两仓PR，安装预览APK验证离线编辑→原生试玩→返回编辑，随后设备ChatGPT授权和候选采用；验证主游戏更新冲突与定稿PR往返。临时截图／日志在build/，不提交过程产物。
