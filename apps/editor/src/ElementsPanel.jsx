@@ -1,0 +1,36 @@
+import React,{useState} from 'react';
+import {instantiateElement,linkElements,duplicateElements,attachSpikes,setElementField,removeElements} from '../../../packages/core/elements.mjs';
+import {clone,entityPosition} from '../../../packages/core/model.mjs';
+const esc=s=>s.replaceAll('~','~0').replaceAll('/','~1');
+export default function ElementsPanel({project,room,entity,apply,onSelect,brush,setBrush,setTool}){
+ const [target,setTarget]=useState(''),[face,setFace]=useState('up'),[input,setInput]=useState('set_active'),[output,setOutput]=useState('active'),[issue,setIssue]=useState('');
+ const catalog=project.catalog.elements;if(!catalog)return <p>当前游戏包尚未提供可交互元素目录。</p>;
+ const safe=fn=>{try{setIssue('');fn();}catch(e){setIssue(e.message);}},center=[room.bounds[0]+room.bounds[2]/2,room.bounds[1]+room.bounds[3]/2],behavior=catalog.behaviors[entity?.component];
+ const update=(key,value)=>apply(setElementField(project,room.id,entity.id,key,value),'调整可交互元素');
+ const labels={duration:'开启时长（秒，0为不限时）',repeat_enabled:'允许反复触发',period:'往返周期（秒）',phase:'初始相位',phase_offset:'起始时间（秒）',endpoint_dwell:'端点停留（秒）',endpoint:'运动终点偏移',platform_size:'承载尺寸',travel:'往返范围',one_way:'允许从下方穿越'};
+ return <section className="elements-panel"><h3>可交互元素与地形</h3>{issue&&<p role="alert">{issue}</p>}
+ <select aria-label="放置要素" defaultValue="" onChange={e=>{const selected=e.target.value;if(selected)safe(()=>{const ops=instantiateElement(project,room.id,selected,center);apply(ops,'放置要素');onSelect(ops[0].value.id);});e.target.value='';}}><option value="">＋ 选择要素或组合件</option>{Object.entries(catalog.definitions).map(([key,d])=><option key={key} value={key}>{d.members?'组合 · ':''}{d.name}</option>)}</select>
+ <label className="field"><span>绘制内容</span><select aria-label="绘制内容" value={brush.kind} onChange={e=>setBrush({...brush,kind:e.target.value})}><option value="space">房间轮廓</option><option value="platform">实体平台</option><option value="one_way">可穿越平台</option><option value="material">材质覆盖</option></select></label>
+ {brush.kind==='material'&&<select aria-label="笔刷材质" value={brush.material} onChange={e=>setBrush({...brush,material:e.target.value})}>{Object.keys(project.catalog.terrain_materials?.materials||{}).map(k=><option key={k}>{k}</option>)}</select>}
+ <button onClick={()=>setTool('draw')}>在画布拖画</button>
+ {entity&&<><p className="muted">{catalog.definitions[entity.definition_id]?.name||entity.component}</p>
+ {entity.properties.state_scope&&<label className="field"><span>关联机关的状态保持</span><select aria-label="状态保持" value={entity.properties.state_scope} onChange={e=>update('state_scope',e.target.value)}><option value="permanent">离房与读档保留</option><option value="attempt">离房后重置</option></select></label>}
+ {entity.component==='array:spike_strips'&&<label className="field"><span>危险外观</span><select aria-label="危险外观" value={entity.properties.appearance||''} onChange={e=>update('appearance',e.target.value)}><option value="">随区域与支撑材质</option>{Object.entries(project.catalog.surface_styles?.styles||{}).map(([key,v])=><option key={key} value={key}>{v.name}</option>)}</select></label>}
+ {Object.entries(behavior?.fields||{}).filter(([key])=>!['element_id','position','bounds','rect','state_scope'].includes(key)).map(([key,spec])=>{
+ const value=entity.properties[key];if(value===undefined)return null;
+ if(spec.choices)return <label className="field" key={key}><span>{key}</span><select aria-label={key} value={value} onChange={e=>update(key,e.target.value)}>{spec.choices.map(c=><option key={c}>{c}</option>)}</select></label>;
+ if(spec.type==='bool')return <label className="check" key={key}><input type="checkbox" checked={value} onChange={e=>update(key,e.target.checked)}/>{labels[key]||key}</label>;
+ if(spec.type==='number')return <label className="field" key={key}><span>{labels[key]||key}</span><input aria-label={key} type="number" min={spec.min} step="any" key={value} defaultValue={value} onBlur={e=>update(key,Number(e.target.value))}/></label>;
+ if(spec.type==='point')return <label className="field" key={key}><span>{labels[key]||key}</span><div className="two-cols">{value.map((v,i)=><input aria-label={key+[' X',' Y'][i]} key={i+':'+v} type="number" defaultValue={v} onBlur={e=>update(key,value.map((n,j)=>j===i?Number(e.target.value):n))}/>)}</div></label>;
+ return null;})}
+ {entity.properties.route&&<><h4>运动路径（相对起点）</h4>{entity.properties.route.map((pt,i)=><div className="two-cols" key={i}>{pt.map((v,j)=><input aria-label={`路径${i+1}${j?'Y':'X'}`} key={j+':'+v} type="number" defaultValue={v} onBlur={e=>update('route',entity.properties.route.map((p,k)=>k===i?p.map((n,l)=>l===j?Number(e.target.value):n):p))}/>)}</div>)}<button onClick={()=>update('route',[...entity.properties.route,entity.properties.endpoint||[128,0]])}>＋路径点</button><button disabled={!entity.properties.route.length} onClick={()=>update('route',entity.properties.route.slice(0,-1))}>移除末点</button></>}
+ {Object.keys(behavior?.outputs||{}).length>0&&<><h4>发送信号</h4><select aria-label="输出信号" value={output} onChange={e=>setOutput(e.target.value)}>{Object.keys(behavior.outputs).map(k=><option key={k}>{k}</option>)}</select><select aria-label="信号接收实例" value={target} onChange={e=>setTarget(e.target.value)}><option value="">选择接收实例</option>{Object.values(room.entities).filter(e=>e.id!==entity.id&&Object.values(catalog.behaviors[e.component]?.inputs||{}).includes(behavior.outputs[output])).map(e=><option key={e.id} value={e.id}>{catalog.definitions[e.definition_id]?.name||e.component} · {e.id}</option>)}</select>
+ <select aria-label="接收操作" value={input} onChange={e=>setInput(e.target.value)}>{Object.entries(catalog.behaviors[room.entities[target]?.component]?.inputs||{}).filter(([,type])=>type===behavior.outputs[output]).map(([key])=><option key={key}>{key}</option>)}</select>
+ <button disabled={!target} onClick={()=>safe(()=>apply(linkElements(project,room.id,entity.id,target,input,output),'连接信号'))}>连接</button>
+ {(entity.properties.links||[]).map((link,i)=><div key={i}><small>{link.output} → {link.target} · {link.input}</small><button onClick={()=>update('links',entity.properties.links.filter((_,j)=>i!==j))}>断开</button></div>)}</>}
+ {entity.component==='array:platforms'&&!entity.properties.one_way&&<><h4>附着危险</h4><select aria-label="危险朝向" value={face} onChange={e=>setFace(e.target.value)}>{[['up','地刺'],['down','顶刺'],['left','左墙刺'],['right','右墙刺']].map(([k,n])=><option key={k} value={k}>{n}</option>)}</select><button onClick={()=>safe(()=>apply(attachSpikes(project,room.id,entity.id,face),'放置附着危险'))}>在选中平台附着尖刺</button></>}
+ <button onClick={()=>safe(()=>{const ops=duplicateElements(project,room.id,[entity.id]);apply(ops,'复制要素及内部连接');onSelect(ops[0].value.id);})}>复制要素／组合</button>
+ <button onClick={()=>safe(()=>{apply(removeElements(project,room.id,[entity.id]),'删除要素及附着物');onSelect(null);})}>删除要素／组合及附着物</button>
+ </>}
+ </section>;
+}

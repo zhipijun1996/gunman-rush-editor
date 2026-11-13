@@ -5,3 +5,4 @@
 | ID | 内容 | 状态 | 当前交接 |
 | --- | --- | --- | --- |
 | EDITOR-01 | 原生世界编辑器的真机交互、AI授权与更新／定稿往返复核 | review | [当前交接](worklines/editor-01.md) |
+| ELEMENTS-01 | 同源要素目录、组合实例化、材质危险笔刷及机关连接 | review | [当前交接](worklines/elements-01.md) |

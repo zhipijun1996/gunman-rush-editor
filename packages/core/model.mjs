@@ -1,3 +1,4 @@
+import {validateElements,terrainPaintError} from './elements.mjs';
 export const SCHEMA=2;
 export class EditorError extends Error {constructor(code,message,details={}){super(message);this.code=code;this.details=details;}}
 export const clone=value=>structuredClone(value);
@@ -11,8 +12,8 @@ export const rect=v=>Array.isArray(v)&&v.length===4&&v.every(finite)&&v[2]>0&&v[
 export function createProject(source={}){return {schema:SCHEMA,id:id('project'),revision:0,source,rooms:{},connections:{},rewards:{},npcs:{},catalog:{components:{},resources:[],enemies:[]},management:{},locks:[],metadata:{name:'失序之钟 · 世界工坊'}};}
 export function createRoom(region='P',origin=[0,0]){const roomId=region+'-R'+crypto.randomUUID().replaceAll('-','').slice(0,10);return {id:roomId,region,name:'新房间',purpose:'待设计',origin,layer:'world',bounds:[0,0,1280,720],spaces:[[0,0,1280,720]],sections:{main:{id:'main',name:'主体',kind:'main',known:true,point:[640,360]}},routes:{},ports:{},entities:{},root:{component:'FixedWorldRoom',properties:{}},camera:{profile:'bounded_follow',transition:'occluded',zones:[],links:[]},implemented:false};}
 export function roomBounds(room){const [x,y,w,h]=room.bounds;return [room.origin[0]+x,room.origin[1]+y,w,h];}
-export function entityPosition(e){const p=e.properties||{};return p.position||p.point||p.bell||(p.rect?[p.rect[0],p.rect[1]]:p.bounds?[p.bounds[0],p.bounds[1]]:[0,0]);}
-export function entityRect(e){const p=e.properties||{},pos=entityPosition(e);return p.rect||p.bounds||[pos[0]-12,pos[1]-24,24,24];}
+export function entityPosition(e){const p=e.properties||{};return p.rect?p.rect.slice(0,2):p.bounds?p.bounds.slice(0,2):p.position||p.point||p.bell||[0,0];}
+export function entityRect(e){const p=e.properties||{},pos=entityPosition(e);return p.rect||p.bounds||(p.platform_size?[pos[0]-p.platform_size[0]/2,pos[1]-p.platform_size[1]/2,...p.platform_size]:[pos[0]-12,pos[1]-24,24,24]);}
 export function entityWithPosition(entity,pos){const e=clone(entity),p=e.properties;if(p.rect)p.rect=[...pos,...p.rect.slice(2)];else if(p.bounds)p.bounds=[...pos,...p.bounds.slice(2)];else if(p.point)p.point=pos;else if(p.bell)p.bell=pos;else p.position=pos;return e;}
 export function findEntity(project,entityId){for(const room of Object.values(project.rooms)){if(room.entities?.[entityId])return {room,entity:room.entities[entityId]};}return null;}
 export function validateProject(p){const issues=[];const issue=(code,path,message,severity='error')=>issues.push({code,path,message,severity});
@@ -28,6 +29,8 @@ export function validateProject(p){const issues=[];const issue=(code,path,messag
    if(!point(entityPosition(e)))issue('entity_position',`/rooms/${rid}/entities/${eid}`,'实例坐标无效');
    if(e.properties?.rect&&!rect(e.properties.rect))issue('entity_rect',`/rooms/${rid}/entities/${eid}`,'地形尺寸无效');
   }
+  issues.push(...validateElements(r,p.catalog?.elements,p.catalog?.surface_styles));
+  const paintError=terrainPaintError(r.root?.properties?.terrain_paint,p.catalog?.terrain_materials);if(paintError)issue('terrain_paint',`/rooms/${rid}/root/properties/terrain_paint`,paintError);
   for(const route of Object.values(r.routes||{})){if(!r.sections?.[route.from]||!r.sections?.[route.to])issue('route_endpoint',`/rooms/${rid}/routes/${route.id}`,'房内路线引用了不存在的分区');if(route.requires!==null&&!validCondition(route.requires))issue('condition',`/rooms/${rid}/routes/${route.id}/requires`,'通路条件必须为OR-of-AND字符串数组');}
   for(const port of Object.values(r.ports||{})){if(!r.sections?.[port.section])issue('port_section',`/rooms/${rid}/ports/${port.id}`,'入口没有合法的房内分区');if(port.connection&&!p.connections[port.connection])issue('port_connection',`/rooms/${rid}/ports/${port.id}`,'入口引用了不存在的连接');}
  }
