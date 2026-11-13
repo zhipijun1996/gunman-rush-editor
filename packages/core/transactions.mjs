@@ -15,6 +15,7 @@ export function applyTransaction(project,{base_revision,operations,scope},option
   const owners=[project[kind][key],next[kind][key]].filter(Boolean).flatMap(v=>kind==='connections'?[v.a.room,v.b.room]:[v.room||v.room_id]);
   assert(owners.every(r=>scope.includes(r)),'scope','关联修改超出本次选区，请把门对或迁移目标一起纳入选区');
  }
+ for(const rid of affected)if(next.rooms[rid]&&['origin','bounds','spaces','ports'].some(key=>canonical(next.rooms[rid][key])!==canonical(project.rooms[rid]?.[key])))next.rooms[rid]={...next.rooms[rid],layout_status:'draft'};
  for(const [key,old] of Object.entries(project.rewards))if(next.rewards[key]){assert(next.rewards[key].action_id===old.action_id,'reward_receipt','移动或修改奖励不能改永久领取身份');if(old.goal||['ability','equipment'].includes(old.type))assert(next.rewards[key].type===old.type,'unique_reward','唯一能力和修钟目标不能转换成普通奖励');}
  const issues=validateProject(next),beforeErrors=new Set(validateProject(project).filter(x=>x.severity==='error').map(x=>canonical(x)));
  const introduced=issues.filter(x=>x.severity==='error'&&!beforeErrors.has(canonical(x)));assert(!introduced.length||options.allowIncomplete,'invalid_design','修改产生了关联错误',{issues:introduced});
