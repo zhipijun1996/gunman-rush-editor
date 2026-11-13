@@ -8,7 +8,7 @@ import java.io.File
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
-/** Immutable packs coexist, so checkpoints can still select their old runtime. */
+/** Cache current-protocol behavior packs by identity; never translate old drafts. */
 class RuntimeStore(private val context: Context) {
     private val root = File(context.filesDir, "runtimes").apply { mkdirs() }
     private val http = OkHttpClient.Builder().connectTimeout(20, TimeUnit.SECONDS).readTimeout(180, TimeUnit.SECONDS).build()

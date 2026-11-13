@@ -1,0 +1,39 @@
+import React,{useEffect,useRef} from 'react';
+import {readSession,writeSession} from '../../../packages/core/session.mjs';
+// Topology coordinates deliberately never share the physical Canvas transform.
+// An authored blueprint switches to its documented world-unit frame, without
+// replacing any room collision or claiming that it has passed review.
+export default function PlanningCanvas({project,region,onRoom,analysis,overlay,focusToken}) {
+ const ref=useRef(),view=useRef({x:0,y:0,z:1}),size=useRef([0,0]),hasView=useRef(false),frame=useRef(null),gesture=useRef(null),pointers=useRef(new Map()),latest=useRef({}),key=useRef(''),timer=useRef();
+ latest.current={project,region,onRoom,analysis,overlay};
+ const plan=()=>latest.current.project.planning?.blueprints?.[latest.current.region]?.design;
+ const entries=()=>{const c=latest.current;return Object.entries(c.project.planning?.rooms||{}).filter(([id,p])=>c.project.rooms[id]&&(!c.region||p.region===c.region)&&Array.isArray(p.position));};
+ function save(){if(key.current)writeSession({planningViews:{...readSession().planningViews,[key.current]:view.current}});}
+ function schedule(){if(!frame.current)frame.current=requestAnimationFrame(()=>{frame.current=null;draw();});}
+ function points(){const p=plan();return p?p.rooms.flatMap(r=>r.outline):entries().map(([,p])=>p.position);}
+ function fit(){if(!size.current[0]||!size.current[1])return;const p=points();if(!p.length)return;const xs=p.map(v=>v[0]),ys=p.map(v=>v[1]),left=Math.min(...xs),top=Math.min(...ys),right=Math.max(...xs),bottom=Math.max(...ys);view.current={x:(left+right)/2,y:(top+bottom)/2,z:Math.min((size.current[0]-64)/Math.max(right-left,100),(size.current[1]-64)/Math.max(bottom-top,100))};hasView.current=true;schedule();save();}
+ function draw(){const canvas=ref.current;if(!canvas)return;const ctx=canvas.getContext('2d'),[w,h]=size.current,v=view.current,c=latest.current,bp=plan();if(!w||!h)return;ctx.setTransform(canvas.width/w,0,0,canvas.height/h,0,0);ctx.fillStyle='#101a21';ctx.fillRect(0,0,w,h);ctx.save();ctx.translate(w/2,h/2);ctx.scale(v.z,v.z);ctx.translate(-v.x,-v.y);
+  const statusColor=id=>c.overlay==='reach'&&['unreachable','unknown'].includes(c.analysis?.rooms[id])?'#596269':'#a5c2ac';
+  if(bp){for(const r of bp.rooms){ctx.beginPath();r.outline.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fillStyle='#35564d88';ctx.strokeStyle=statusColor(r.room_id);ctx.lineWidth=1.5/v.z;ctx.fill();ctx.stroke();if(r.bounds[2]*v.z<65)continue;const [x,y]=r.label;ctx.font=`${Math.max(10,Math.min(14,r.bounds[2]*v.z/15))/v.z}px sans-serif`;ctx.fillStyle='#ede5c9';ctx.textAlign='center';ctx.fillText(r.bounds[2]*v.z>150?r.room_id+' '+r.name:r.room_id,x,y);if(r.bounds[2]*v.z>180){ctx.font=`${11/v.z}px sans-serif`;ctx.fillStyle='#b7cdbd';ctx.fillText(r.purpose,x,y+18/v.z);}}
+   for(const p of bp.external_ports){ctx.fillStyle='#e2c581';ctx.beginPath();ctx.arc(...p.point,4/v.z,0,Math.PI*2);ctx.fill();}
+  }else{
+   const rows=entries(),ids=new Set(rows.map(([id])=>id)),positions=Object.fromEntries(rows.map(([id,p])=>[id,p.position]));
+   for(const edge of Object.values(c.project.connections)){if(!ids.has(edge.a.room)||!ids.has(edge.b.room))continue;ctx.strokeStyle=c.project.rooms[edge.a.room].region===c.project.rooms[edge.b.room].region?'#476360':'#bcaa77';ctx.lineWidth=1/v.z;ctx.beginPath();ctx.moveTo(...positions[edge.a.room]);ctx.lineTo(...positions[edge.b.room]);ctx.stroke();}
+   for(const [id,p] of rows){ctx.fillStyle=statusColor(id);ctx.beginPath();ctx.arc(...p.position,Math.max(2.5,Math.min(5,12*v.z))/v.z,0,Math.PI*2);ctx.fill();if(c.region||v.z>1.1){ctx.fillStyle='#e3dfc7';ctx.font=`${11/v.z}px sans-serif`;ctx.textAlign='left';ctx.fillText(id+' '+c.project.rooms[id].name,p.position[0]+8/v.z,p.position[1]-5/v.z);}}
+   if(!c.region)for(const r of c.project.planning?.regions||[]){const own=rows.filter(([,p])=>p.region===r.code);if(!own.length)continue;const x=own.reduce((sum,[,p])=>sum+p.position[0],0)/own.length,y=Math.min(...own.map(([,p])=>p.position[1]))-20/v.z;ctx.font=`bold ${13/v.z}px sans-serif`;ctx.textAlign='center';const label=r.name+' · '+own.length+'房',metrics=ctx.measureText(label);ctx.fillStyle='#142128e8';ctx.fillRect(x-metrics.width/2-6/v.z,y-15/v.z,metrics.width+12/v.z,23/v.z);ctx.fillStyle=r.color||'#d9c991';ctx.fillText(label,x,y);}
+  }
+  ctx.restore();ctx.font='11px sans-serif';ctx.fillStyle='#d7ca9b';ctx.fillText(bp?'区域候选蓝图 · 世界单位 · 尚未替换正式地形':'世界规划拓扑 · 节点不代表房间真实尺寸',12,h-14);
+ }
+ function local(e){const b=ref.current.getBoundingClientRect();return [e.clientX-b.left,e.clientY-b.top];}
+ function world(p){return [(p[0]-size.current[0]/2)/view.current.z+view.current.x,(p[1]-size.current[1]/2)/view.current.z+view.current.y];}
+ useEffect(()=>{const observer=new ResizeObserver(([e])=>{size.current=[e.contentRect.width,e.contentRect.height];const d=Math.min(devicePixelRatio||1,2);ref.current.width=size.current[0]*d;ref.current.height=size.current[1]*d;if(!hasView.current)fit();else schedule();});observer.observe(ref.current);return()=>{observer.disconnect();cancelAnimationFrame(frame.current);clearTimeout(timer.current);save();};},[]);
+ useEffect(()=>{key.current=(region||'world')+(plan()?':blueprint':':topology');const saved=readSession().planningViews?.[key.current];if(saved){view.current=saved;hasView.current=true;schedule();}else{hasView.current=false;requestAnimationFrame(fit);}},[region]);
+ const lastFocus=useRef(focusToken);useEffect(()=>{if(lastFocus.current!==focusToken){lastFocus.current=focusToken;fit();}},[focusToken]);
+ useEffect(schedule,[project,analysis,overlay]);
+ useEffect(()=>{const canvas=ref.current,zoom=e=>{e.preventDefault();const p=local(e),before=world(p),z=Math.max(.005,Math.min(20,view.current.z*Math.exp(-e.deltaY*.0015)));view.current={x:before[0]-(p[0]-size.current[0]/2)/z,y:before[1]-(p[1]-size.current[1]/2)/z,z};schedule();clearTimeout(timer.current);timer.current=setTimeout(save,160);};canvas.addEventListener('wheel',zoom,{passive:false});return()=>canvas.removeEventListener('wheel',zoom);},[]);
+ function down(e){ref.current.setPointerCapture(e.pointerId);pointers.current.set(e.pointerId,local(e));const pts=[...pointers.current.values()];gesture.current=pts.length===2?{kind:'pinch',view:{...view.current},center:pts[0].map((x,i)=>(x+pts[1][i])/2),distance:Math.hypot(pts[0][0]-pts[1][0],pts[0][1]-pts[1][1])}:{kind:'pan',point:local(e),view:{...view.current}};}
+ function move(e){if(!pointers.current.has(e.pointerId))return;pointers.current.set(e.pointerId,local(e));const g=gesture.current;if(!g)return;if(g.kind==='pinch'){const pts=[...pointers.current.values()];if(pts.length!==2)return;const z=Math.max(.005,Math.min(20,g.view.z*Math.hypot(pts[0][0]-pts[1][0],pts[0][1]-pts[1][1])/Math.max(1,g.distance))),center=pts[0].map((x,i)=>(x+pts[1][i])/2);view.current={z,x:g.view.x+(g.center[0]-size.current[0]/2)/g.view.z-(center[0]-size.current[0]/2)/z,y:g.view.y+(g.center[1]-size.current[1]/2)/g.view.z-(center[1]-size.current[1]/2)/z};}else{const p=local(e);view.current={...g.view,x:g.view.x-(p[0]-g.point[0])/g.view.z,y:g.view.y-(p[1]-g.point[1])/g.view.z};}schedule();}
+ function up(e){pointers.current.delete(e.pointerId);gesture.current=null;save();}
+ function open(e){const p=world(local(e)),bp=plan();let id;if(bp){id=bp.rooms.find(r=>{let inside=false;for(let i=0,j=r.outline.length-1;i<r.outline.length;j=i++){const a=r.outline[i],b=r.outline[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])inside=!inside;}return inside;})?.room_id;}else{id=entries().sort((a,b)=>Math.hypot(a[1].position[0]-p[0],a[1].position[1]-p[1])-Math.hypot(b[1].position[0]-p[0],b[1].position[1]-p[1]))[0]?.[0];}if(id){save();latest.current.onRoom(id,true);}}
+ return <canvas ref={ref} aria-label={plan()?'区域候选蓝图':'世界规划拓扑画布'} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onDoubleClick={open}/>;
+}
