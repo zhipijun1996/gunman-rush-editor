@@ -10,7 +10,8 @@ export function planUpdate(base,draft,incoming,resolutions={}){
   conflicts.push({path,base:clone(a),draft:clone(b),incoming:clone(c)});return clone(b);
  };
  const result=clone(draft);for(const field of ['rooms','connections','rewards','npcs','catalog'])result[field]=merge(base[field],draft[field],incoming[field],'/'+field);
- for(const lock of draft.locks||[])if(!same(lock.split('/').slice(1).reduce((v,k)=>v?.[k],draft),lock.split('/').slice(1).reduce((v,k)=>v?.[k],result)))conflicts.push({path:lock,locked:true});
+ const lockedValue=(obj,path)=>path.split('/').slice(1).map(k=>k.replaceAll('~1','/').replaceAll('~0','~')).reduce((v,k)=>v?.[k],obj);
+ for(const lock of draft.locks||[])if(!same(lockedValue(draft,lock),lockedValue(result,lock)))conflicts.push({path:lock,locked:true});
  const oldErrors=new Set(validateProject(draft).filter(x=>x.severity==='error').map(canonical));for(const problem of validateProject(result).filter(x=>x.severity==='error'&&!oldErrors.has(canonical(x))))conflicts.push({path:problem.path,reference_error:problem.message});
  result.source=clone(incoming.source);result.runtime_defaults=clone(incoming.runtime_defaults);result.native_runtime=clone(incoming.native_runtime);result.revision=draft.revision+1;return {canApply:!conflicts.length,conflicts,project:result,checkpoint:clone(draft)};
 }
