@@ -2,7 +2,9 @@
 
 面向手机的整世界关卡编辑器，配套 [gunman-rush](https://github.com/zhipijun1996/gunman-rush)。世界与房内通路、能力锁、实例、收集物及房间评分使用稳定身份；AI先生成候选，由用户比较和采用。
 
-开发先读 [AGENTS.md](AGENTS.md)、[设计](docs/design/editor.md)与[任务表](docs/project/tasks.md)。主游戏拥有组件行为和正式数据，本仓库不分发游戏素材或用户草稿。
+Android预览版：[直接下载0.1.1安装包](https://github.com/zhipijun1996/gunman-rush-editor/releases/download/v0.1.1-preview.1/gunman-world-editor-0.1.1-arm64.apk)（约164MiB），[发行与校验清单](https://github.com/zhipijun1996/gunman-rush-editor/releases/tag/v0.1.1-preview.1)。
+
+开发先读 [AGENTS.md](AGENTS.md)、[设计](docs/design/editor.md)与[任务表](docs/project/tasks.md)。主游戏拥有组件行为和正式数据，源码不提交游戏素材或用户草稿；试玩发行按原许可携带配套运行资源。
 
 开发：Node 24，执行 `npm ci && npm run check`。未导入游戏时可在界面导入schema 2项目。
 
